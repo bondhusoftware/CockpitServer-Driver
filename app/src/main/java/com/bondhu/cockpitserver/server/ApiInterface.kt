@@ -44,6 +44,15 @@ interface ApiInterface {
     ): Call<Map<String, Any>>
 
     /**
+     * Cockpit device polling — সার্ভার থেকে assigned job নাও।
+     * Socket.IO-এর বদলে HTTP polling (নির্ভরযোগ্য)।
+     */
+    @GET("/api/cockpit/device/{device_id}/pending")
+    fun getPendingJobs(
+        @Path("device_id") deviceId: String
+    ): Call<Map<String, Any>>
+
+    /**
      * রিচার্জ ফলাফল রিপোর্ট।
      * status: completed | failed | waiting
      * sms: Cockpit transaction ID (reconciliation-এর জন্য)

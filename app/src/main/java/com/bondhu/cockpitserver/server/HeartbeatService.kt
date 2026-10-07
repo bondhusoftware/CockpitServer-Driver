@@ -28,6 +28,44 @@ class HeartbeatService : Service() {
         }
     }
 
+    // v3: HTTP polling — Socket.IO-এর বদলে নির্ভরযোগ্য job fetch (প্রতি 10 সেকেন্ড)
+    private val pollRunnable = object : Runnable {
+        override fun run() {
+            pollPendingJobs()
+            handler.postDelayed(this, 10_000)
+        }
+    }
+
+    private fun pollPendingJobs() {
+        if (!ServerConfig.isEnabled(this)) return
+        val deviceId = ServerConfig.getDeviceId(this)
+        if (deviceId.isBlank()) return
+        Thread {
+            try {
+                val resp = ApiClient.get(this).getPendingJobs(deviceId).execute()
+                if (resp.isSuccessful) {
+                    ConnectionState.connected = true // polling success = server reachable
+                    val body = resp.body() ?: return@Thread
+                    @Suppress("UNCHECKED_CAST")
+                    val jobs = body["jobs"] as? List<Map<String, Any>> ?: return@Thread
+                    for (job in jobs) {
+                        try {
+                            val json = JSONObject()
+                            for ((k, v) in job) {
+                                json.put(k, v?.toString() ?: "")
+                            }
+                            // JobManager-এর ডুপ্লিকেট চেক আছে
+                            handler.post { jobManager.onJobReceived(json) }
+                        } catch (_: Exception) { }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Poll failed: ${e.message}")
+                ConnectionState.connected = false
+            }
+        }.start()
+    }
+
     override fun onCreate() {
         super.onCreate()
         startForegroundNotification()
@@ -56,6 +94,7 @@ class HeartbeatService : Service() {
             socketManager.connect()
         }
         handler.post(heartbeatRunnable)
+        handler.post(pollRunnable) // v3: HTTP polling শুরু
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -82,6 +121,7 @@ class HeartbeatService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacks(heartbeatRunnable)
+        handler.removeCallbacks(pollRunnable)
         socketManager.disconnect()
         super.onDestroy()
     }
