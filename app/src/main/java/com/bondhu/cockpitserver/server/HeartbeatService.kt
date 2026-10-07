@@ -70,6 +70,12 @@ class HeartbeatService : Service() {
                     if (id.isNotBlank()) ApiClient.get(this).disconnect(id).execute()
                 } catch (_: Exception) { }
             }
+            else -> {
+                // v2 fix: default start-এও socket connect করো (service already running থাকলে onCreate হয় না)
+                if (ServerConfig.isEnabled(this) && !socketManager.connected) {
+                    socketManager.connect()
+                }
+            }
         }
         return START_STICKY
     }
