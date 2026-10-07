@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cockpit Server Driver</string>
+    <string name="accessibility_description">Cockpit Server Driver — সার্ভারের জব অনুযায়ী GP Cockpit-এ স্বয়ংক্রিয় রিচার্জ করে।</string>
+</resources>
